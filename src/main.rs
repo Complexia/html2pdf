@@ -1,7 +1,7 @@
 use std::env;
 
 use clap::Parser;
-use html2pdf::{run, Error, Options};
+use html2pdf::{run, Error, PdfOptions};
 use log::{debug, warn};
 
 fn main() -> Result<(), Error> {
@@ -15,9 +15,9 @@ fn main() -> Result<(), Error> {
         warn!("No RUST_LOG environment variable found, set log to 'info'")
     }
 
-    let opt = Options::parse();
-    debug!("Options: {opt:#?}");
+    let pdf_options = PdfOptions::parse();
+    debug!("Options: {pdf_options:#?}");
 
     // Let's go
-    run(&opt)
+    run(&pdf_options, None)
 }

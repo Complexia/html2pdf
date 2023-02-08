@@ -68,17 +68,26 @@ impl From<anyhow::Error> for Error {
 /// # Errors
 ///
 /// Could fail if there is I/O or Chrome headless issue
-pub fn run(opt: &Options) -> Result<(), Error> {
-    let input = dunce::canonicalize(opt.input())?;
-    let output = if let Some(path) = opt.output() {
+pub fn run(
+    pdf_options: &PdfOptions,
+    local_launch_options: Option<&LocalLaunchOptions>,
+) -> Result<(), Error> {
+    let input = dunce::canonicalize(pdf_options.input())?;
+    let output = if let Some(path) = pdf_options.output() {
         path.clone()
     } else {
-        let mut path = opt.input().clone();
+        let mut path = pdf_options.input().clone();
         path.set_extension("pdf");
         path
     };
 
-    html_to_pdf(input, output, opt.into(), opt.wait())?;
+    html_to_pdf(
+        input,
+        output,
+        pdf_options.into(),
+        local_launch_options,
+        pdf_options.wait(),
+    )?;
 
     Ok(())
 }
@@ -95,6 +104,7 @@ pub fn html_to_pdf<I, O>(
     input: I,
     output: O,
     pdf_options: PrintToPdfOptions,
+    local_launch_options: Option<&LocalLaunchOptions>,
     wait: Option<Duration>,
 ) -> Result<(), Error>
 where
@@ -109,7 +119,7 @@ where
     let input = format!("file://{os}");
     info!("Input file: {input}");
 
-    let local_pdf = print_to_pdf(&input, pdf_options, wait)?;
+    let local_pdf = print_to_pdf(&input, pdf_options, local_launch_options, wait)?;
 
     info!("Output file: {:?}", output.as_ref());
     fs::write(output.as_ref(), local_pdf)?;
@@ -120,11 +130,20 @@ where
 fn print_to_pdf(
     file_path: &str,
     pdf_options: PrintToPdfOptions,
+    local_launch_options: Option<&LocalLaunchOptions>,
     wait: Option<Duration>,
 ) -> Result<Vec<u8>> {
-    let options = LaunchOptionsBuilder::default()
-        .build()
-        .expect("Default should not panic");
+    //converts LocalLaunchOptions to headless_chrome::LaunchOptions if passed else default
+    let options = match local_launch_options {
+        Some(x) => x.into(),
+        None => {
+            let options = LaunchOptionsBuilder::default()
+                .build()
+                .expect("Default should not panic");
+            options
+        }
+    };
+    
     let browser = Browser::new(options)?;
     let tab = browser.wait_for_initial_tab()?;
     let tab = tab.navigate_to(file_path)?.wait_until_navigated()?;

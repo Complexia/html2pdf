@@ -1,16 +1,19 @@
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::{path::PathBuf, ffi::OsStr};
 use std::str::FromStr;
 use std::time::Duration;
 
+#[cfg(feature = "fetch")]
+use super::fetcher::{Fetcher, FetcherOptions};
 use clap::Parser;
-use headless_chrome::types::PrintToPdfOptions;
+use headless_chrome::{types::PrintToPdfOptions, LaunchOptions};
 use humantime::parse_duration;
 
 use crate::Error;
 
 /// Generate a PDF from a local HTML file using a headless chrome
 #[derive(Debug, Parser)]
-pub struct Options {
+pub struct PdfOptions {
     /// Input HTML file.
     pub input: PathBuf,
 
@@ -72,7 +75,7 @@ pub struct Options {
     pub margin: Option<Margin>,
 }
 
-impl Options {
+impl PdfOptions {
     /// Get a reference to the cli options's input.
     #[must_use]
     pub fn input(&self) -> &PathBuf {
@@ -140,8 +143,8 @@ impl Options {
     }
 }
 
-impl From<&Options> for PrintToPdfOptions {
-    fn from(opt: &Options) -> Self {
+impl From<&PdfOptions> for PrintToPdfOptions {
+    fn from(opt: &PdfOptions) -> Self {
         PrintToPdfOptions {
             landscape: Some(opt.landscape()),
             display_header_footer: Some(opt.header().is_some() || opt.footer().is_some()),
@@ -159,6 +162,136 @@ impl From<&Options> for PrintToPdfOptions {
             footer_template: opt.footer().cloned(),
             prefer_css_page_size: None,
             transfer_mode: None,
+        }
+    }
+}
+
+/// Get a reference to the cli launch options's input.
+pub struct LocalLaunchOptions<'a> {
+    /// Get a reference to the cli options's output.
+    pub headless: bool,
+    /// Get a reference to the cli options's output.
+    pub sandbox: bool,
+    /// Get a reference to the cli options's output.
+    pub window_size: Option<(u32, u32)>,
+    /// Get a reference to the cli options's output.
+    pub port: Option<u16>,
+    /// Get a reference to the cli options's output.
+    pub ignore_certificate_errors: bool,
+    /// Get a reference to the cli options's output.
+    pub path: Option<std::path::PathBuf>,
+    /// Get a reference to the cli options's output.
+    pub user_data_dir: Option<std::path::PathBuf>,
+    /// Get a reference to the cli options's output.
+    pub extensions: Vec<&'a OsStr>,
+    /// Get a reference to the cli options's output.
+    pub args: Vec<&'a OsStr>,
+    /// Get a reference to the cli options's output.
+    pub disable_default_args: bool,
+    /// Get a reference to the cli options's output.
+    pub idle_browser_timeout: Duration,
+    /// Get a reference to the cli options's output.
+    pub process_envs: Option<HashMap<String, String>>,
+    /// Get a reference to the cli options's output.
+    pub proxy_server: Option<&'a str>,
+}
+
+impl<'a> LocalLaunchOptions<'a> {
+    /// Get a reference to the cli options's input.
+    #[must_use]
+    pub fn headless(&self) -> bool {
+        self.headless
+    }
+
+    /// Get a reference to the cli options's output.
+    #[must_use]
+    pub fn sandbox(&self) -> bool {
+        self.sandbox
+    }
+
+    /// Get a reference to the cli options's landscape.
+    #[must_use]
+    pub fn window_size(&self) -> Option<(u32, u32)> {
+        self.window_size
+    }
+
+    /// Get a reference to the cli options's background.
+    #[must_use]
+    pub fn port(&self) -> Option<u16> {
+        self.port
+    }
+
+    /// Get a reference to the cli options's wait.
+    #[must_use]
+    pub fn ignore_certificate_errors(&self) -> bool {
+        self.ignore_certificate_errors
+    }
+
+    /// Get a reference to the cli options's header.
+    #[must_use]
+    pub fn path(&self) -> Option<std::path::PathBuf> {
+        self.path.clone()
+    }
+
+    /// Get a reference to the cli options's footer.
+    #[must_use]
+    pub fn user_data_dir(&self) -> Option<std::path::PathBuf> {
+        self.user_data_dir.clone()
+    }
+
+    /// Get a reference to the cli options's paper.
+    #[must_use]
+    pub fn extension(&self) -> Vec<&'a OsStr> {
+        self.extensions.clone()
+    }
+
+    /// Get a reference to the cli options's scale.
+    #[must_use]
+    pub fn args(&self) -> Vec<&'a OsStr> {
+        self.args.clone()
+    }
+
+    /// Get a reference to the cli options's margin.
+    #[must_use]
+    pub fn disable_default_args(&self) -> bool {
+        self.disable_default_args
+    }
+
+    /// Get a reference to the cli options's range.
+    #[must_use]
+    pub fn idle_browser_timeout(&self) -> Duration {
+        self.idle_browser_timeout
+    }
+
+    /// Get a reference to the cli options's range.
+    #[must_use]
+    pub fn process_envs(&self) -> Option<HashMap<String, String>> {
+        self.process_envs.clone()
+    }
+
+    /// Get a reference to the cli options's range.
+    #[must_use]
+    pub fn proxy_server(&self) -> Option<&'a str> {
+        self.proxy_server
+    }
+}
+
+impl<'a> From<&LocalLaunchOptions<'a>> for LaunchOptions<'a> {
+    fn from(local_launch_options: &LocalLaunchOptions<'a>) -> Self {
+        LaunchOptions::<'a> {
+            headless: local_launch_options.headless,
+            sandbox: local_launch_options.sandbox,
+            window_size: local_launch_options.window_size,
+            port: local_launch_options.port,
+            ignore_certificate_errors: local_launch_options.ignore_certificate_errors,
+            path: local_launch_options.path.clone(),
+            user_data_dir: local_launch_options.user_data_dir.clone(),
+            extensions: local_launch_options.extensions.clone(),
+            args: local_launch_options.args.clone(),
+            disable_default_args: local_launch_options.disable_default_args,
+            idle_browser_timeout: local_launch_options.idle_browser_timeout,
+            process_envs: local_launch_options.process_envs.clone(),
+            proxy_server: local_launch_options.proxy_server,
         }
     }
 }
